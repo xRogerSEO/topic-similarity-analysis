@@ -94,33 +94,63 @@ def main():
                 # Display results
                 st.subheader("Similarity Results")
                 
-                # Style the dataframe
-                def color_similarity(val):
-                    color = f'background-color: rgba(76, 175, 80, {val})'
-                    return color
-                
-                styled_df = df.style.applymap(
-                    color_similarity,
-                    subset=['Similarity Score']
-                )
-                
-                st.dataframe(
-                    styled_df,
-                    use_container_width=True
-                )
-                
-                # Find highest similarity pair
-                highest_sim = df.loc[df['Similarity Score'].idxmax()]
-                st.success(f"Highest similarity found between '{highest_sim['Item 1']}' and '{highest_sim['Item 2']}' with a score of {highest_sim['Similarity Score']}")
-                
-                # Download button for results
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label="Download Results as CSV",
-                    data=csv,
-                    file_name="similarity_results.csv",
-                    mime="text/csv"
-                )
+                # Add filter options
+                st.subheader("Filter Results (Optional)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    min_score = st.number_input("Minimum Similarity Score", 
+                                              min_value=0.0, 
+                                              max_value=1.0, 
+                                              value=0.0, 
+                                              step=0.01,
+                                              format="%.3f")
+                with col2:
+                    max_score = st.number_input("Maximum Similarity Score", 
+                                              min_value=0.0, 
+                                              max_value=1.0, 
+                                              value=1.0, 
+                                              step=0.01,
+                                              format="%.3f")
+
+                # Filter the dataframe
+                filtered_df = df[
+                    (df['Similarity Score'] >= min_score) & 
+                    (df['Similarity Score'] <= max_score)
+                ].copy()
+
+                if filtered_df.empty:
+                    st.warning("No results match the selected filter criteria.")
+                else:
+                    # Style the filtered dataframe
+                    def color_similarity(val):
+                        color = f'background-color: rgba(76, 175, 80, {val})'
+                        return color
+                    
+                    styled_df = filtered_df.style.applymap(
+                        color_similarity,
+                        subset=['Similarity Score']
+                    )
+                    
+                    st.dataframe(
+                        styled_df,
+                        use_container_width=True
+                    )
+                    
+                    # Find highest similarity pair from filtered results
+                    highest_sim = filtered_df.loc[filtered_df['Similarity Score'].idxmax()]
+                    st.success(f"Highest similarity in filtered results found between '{highest_sim['Item 1']}' and '{highest_sim['Item 2']}' with a score of {highest_sim['Similarity Score']}")
+                    
+                    # Show number of results after filtering
+                    st.info(f"Showing {len(filtered_df)} results after filtering")
+                    
+                    # Download button for filtered results
+                    csv = filtered_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Filtered Results as CSV",
+                        data=csv,
+                        file_name="filtered_similarity_results.csv",
+                        mime="text/csv"
+                    )
 
 if __name__ == "__main__":
     main()
