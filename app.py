@@ -38,7 +38,7 @@ class KeywordIntentAnalyzer:
             similarities.append({
                 'Item 1': items[i],
                 'Item 2': items[j],
-                'Similarity Score': round(float(similarity), 3)
+                'Similarity Score': f"{float(similarity):.3f}"  # Format to 3 decimal places
             })
         
         return pd.DataFrame(similarities)
@@ -120,15 +120,10 @@ def main():
         if len(items) < 2:
             st.error("Please enter at least 2 keywords/topics to compare.")
         else:
-            # Show the cleaned keywords
-            st.subheader("Processed Keywords/Topics")
-            st.write("The following keywords/topics will be analyzed:")
-            for item in items:
-                st.write(f"- {item}")
-                
             with st.spinner("Calculating similarities..."):
                 # Calculate similarities and store in session state
-                st.session_state.results_df = analyzer.calculate_similarities(items)
+                df = analyzer.calculate_similarities(items)
+                st.session_state.results_df = df
     
     # Only show filter and results if we have data
     if st.session_state.results_df is not None:
