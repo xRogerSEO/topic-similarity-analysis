@@ -38,7 +38,7 @@ class KeywordIntentAnalyzer:
             similarities.append({
                 'Item 1': items[i],
                 'Item 2': items[j],
-                'Similarity Score': f"{float(similarity):.3f}"  # Format to 3 decimal places
+                'Similarity Score': round(float(similarity), 3)  # Keep as number for filtering
             })
         
         return pd.DataFrame(similarities)
@@ -155,9 +155,13 @@ def main():
         if filtered_df.empty:
             st.warning("No results match the selected filter criteria.")
         else:
+            # Format similarity scores for display
+            filtered_df['Similarity Score'] = filtered_df['Similarity Score'].apply(lambda x: f"{x:.3f}")
+            
             # Style the filtered dataframe
             def color_similarity(val):
-                color = f'background-color: rgba(76, 175, 80, {val})'
+                # Convert back to float for coloring
+                color = f'background-color: rgba(76, 175, 80, {float(val)})'
                 return color
             
             styled_df = filtered_df.style.applymap(
@@ -171,7 +175,7 @@ def main():
             )
             
             # Find highest similarity pair from filtered results
-            highest_sim = filtered_df.loc[filtered_df['Similarity Score'].idxmax()]
+            highest_sim = filtered_df.loc[filtered_df.index[0]]  # Use first row after sorting
             st.success(f"Highest similarity in filtered results found between '{highest_sim['Item 1']}' and '{highest_sim['Item 2']}' with a score of {highest_sim['Similarity Score']}")
             
             # Show number of results after filtering
