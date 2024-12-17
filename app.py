@@ -5,14 +5,28 @@ from sentence_transformers import SentenceTransformer
 from typing import List
 import itertools
 import io
+import re
+
+def clean_text(text: str) -> str:
+    """Clean text by removing special characters and extra whitespace."""
+    if not isinstance(text, str):
+        return ""
+    # Remove the 'Â' character specifically
+    text = text.replace('Â', '')
+    # Remove other special characters but keep basic punctuation
+    text = re.sub(r'[^\w\s\-.,]', '', text)
+    # Remove extra whitespace
+    text = ' '.join(text.split())
+    return text.strip()
 
 class KeywordIntentAnalyzer:
     def __init__(self):
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
     
     def calculate_similarities(self, items: List[str]) -> pd.DataFrame:
-        # Remove any empty strings and duplicates while preserving order
-        items = list(dict.fromkeys([item.strip() for item in items if item.strip()]))
+        # Clean and remove any empty strings and duplicates while preserving order
+        items = [clean_text(item) for item in items]
+        items = list(dict.fromkeys([item for item in items if item]))
         
         # Generate embeddings for all items
         embeddings = self.model.encode(items)
@@ -34,8 +48,23 @@ class KeywordIntentAnalyzer:
 
 def process_uploaded_file(uploaded_file):
     try:
-        df = pd.read_csv(uploaded_file, header=None)
-        return df[0].dropna().tolist()  # Get first column values, drop any NaN values
+        # Try different encodings if utf-8 fails
+        encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+        df = None
+        
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(uploaded_file, header=None, encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if df is None:
+            st.error("Could not read the file with any supported encoding.")
+            return []
+        
+        # Clean the text data
+        return [clean_text(str(item)) for item in df[0].dropna().tolist()]
     except Exception as e:
         st.error(f"Error processing file: {str(e)}")
         return []
@@ -83,14 +112,20 @@ def main():
         
         # Add items from text area if any
         if text_input.strip():
-            items.extend([item.strip() for item in text_input.split('\n') if item.strip()])
+            items.extend([clean_text(item) for item in text_input.split('\n') if item.strip()])
         
         # Remove duplicates while preserving order
-        items = list(dict.fromkeys(items))
+        items = list(dict.fromkeys([item for item in items if item]))
         
         if len(items) < 2:
             st.error("Please enter at least 2 keywords/topics to compare.")
         else:
+            # Show the cleaned keywords
+            st.subheader("Processed Keywords/Topics")
+            st.write("The following keywords/topics will be analyzed:")
+            for item in items:
+                st.write(f"- {item}")
+                
             with st.spinner("Calculating similarities..."):
                 # Calculate similarities and store in session state
                 st.session_state.results_df = analyzer.calculate_similarities(items)
